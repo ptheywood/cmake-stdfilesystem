@@ -65,4 +65,6 @@ int main(int argc, char* argv[]) {
     // Try using some filesystem features.
     fs::path p = fs::current_path();
     printf("current_path %s\n", p.c_str());
+
+    return EXIT_SUCCESS;
 }
