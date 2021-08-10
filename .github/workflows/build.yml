@@ -105,3 +105,7 @@ jobs:
       working-directory: ${{ env.build_dir }}
       run: cmake --build . --target all --verbose -j `nproc`
 
+    - name: Run the binary
+      working-directory: ${{ env.build_dir }}
+      run: ./bin/${{ env.config }}/stdfilesystem-test
+
