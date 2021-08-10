@@ -18,7 +18,6 @@ jobs:
       fail-fast: false
       # explicit include-based build matrix, of known valid options
       matrix:
-        os: ubuntu-20.04
         include:
           # GCC, C++14
           - os: ubuntu-20.04
