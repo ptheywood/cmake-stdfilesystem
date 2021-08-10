@@ -1,0 +1,107 @@
+# Compile project on Ubuntu
+name: Build
+
+on:
+  push:
+    paths:
+      - "**"
+      - "!.github/**"
+      - ".github/workflows/Ubuntu.yml"
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      # explicit include-based build matrix, of known valid options
+      matrix:
+        os: ubuntu-20.04
+        include:
+          # GCC, C++14
+          - os: ubuntu-20.04
+            CXX: gcc-10
+            CXXSTD: 17
+          - os: ubuntu-20.04
+            CXX: gcc-9
+            CXXSTD: 17
+          - os: ubuntu-20.04
+            CXX: gcc-8
+            CXXSTD: 17
+          - os: ubuntu-20.04
+            CXX: gcc-7
+            CXXSTD: 17
+          # GCC, C++14
+          - os: ubuntu-20.04
+            CXX: gcc-10
+            CXXSTD: 14
+          - os: ubuntu-20.04
+            CXX: gcc-9
+            CXXSTD: 14
+          - os: ubuntu-20.04
+            CXX: gcc-8
+            CXXSTD: 14
+          - os: ubuntu-20.04
+            CXX: gcc-7
+            CXXSTD: 14
+          # Clang c++17
+          - os: ubuntu-20.04
+            CXX: clang-10
+            CXXSTD: 17
+          # clang c++14
+          - os: ubuntu-20.04
+            CXX: clang-10
+            CXXSTD: 14
+    env:
+      build_dir: "build"
+      config: "Release"
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Specify the correct host compilers
+    - name: Install/Select GCC
+      if: ${{ startsWith(matrix.CXX, 'gcc')}}
+      run: |
+        gcc=${{ matrix.CXX }}
+        gcc_version=${gcc/gcc-/}
+        sudo apt-get install -y gcc-${gcc_version} g++-${gcc_version}
+        echo "CC=/usr/bin/gcc-${gcc_version}" >> $GITHUB_ENV
+        echo "CXX=/usr/bin/g++-${gcc_version}" >> $GITHUB_ENV
+        echo "CUDAHOSTCXX=/usr/bin/g++-${gcc_version}" >> $GITHUB_ENV
+
+    - name: Install/Select Clang
+      if: ${{ startsWith(matrix.CXX, 'clang')}}
+      run: |
+        clang=${{ matrix.CXX }}
+        clang_version=${clang/clang-/}
+        sudo apt-get install -y clang-${clang_version} clang-tools-${clang_version}
+        echo "CC=/usr/bin/clang-${clang_version}" >> $GITHUB_ENV
+        echo "CXX=/usr/bin/clang++-${clang_version}" >> $GITHUB_ENV
+        echo "CUDAHOSTCXX=/usr/bin/clang++-${clang_version}" >> $GITHUB_ENV
+
+    - name: Configure cmake
+      id: configure
+      run: cmake . -B ${{ env.build_dir }} -DCMAKE_BUILD_TYPE=${{ env.config }} -DCXXSTD=${{ matrix.CXXSTD }}
+
+    - name: Configure Error Processing
+      if: ${{ failure() && steps.configure.outcome == 'failure' }}
+      working-directory: ${{ env.build_dir }}
+      run: |
+          if [[ -f "CMakeFiles/CMakeOutput.log" ]]; then
+            echo "---- CMakeFiles/CMakeOutput.log"
+            cat CMakeFiles/CMakeOutput.log
+            echo "----"
+          fi
+          if [[ -f "CMakeFiles/CMakeError.log" ]]; then
+            echo "---- CMakeFiles/CMakeError.log"
+            cat CMakeFiles/CMakeError.log
+            echo "----"
+          fi
+
+    - name: Build everything else
+      working-directory: ${{ env.build_dir }}
+      run: cmake --build . --target all --verbose -j `nproc`
+
